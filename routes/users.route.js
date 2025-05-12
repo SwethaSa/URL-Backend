@@ -125,7 +125,6 @@ router.put("/:id", auth, async function (req, res) {
   const updateData = req.body;
 
   if (updateData.password) {
-    // If password is being updated, hash it
     updateData.password = await generateHashedPassword(updateData.password);
   }
 
@@ -207,6 +206,36 @@ router.post("/reset-password/:token", async (req, res) => {
   await deleteResetToken(token);
 
   res.send({ message: "Password has been reset successfully." });
+});
+
+router.get("/stats", async (req, res) => {
+  try {
+    const col = client.db("urlshortener").collection("urls");
+    const all = await col.find().toArray();
+
+    const dailyMap = all.reduce((acc, u) => {
+      const day = new Date(u.createdAt).toISOString().slice(0, 10);
+      acc[day] = (acc[day] || 0) + 1;
+      return acc;
+    }, {});
+    const daily = Object.entries(dailyMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({ date, count }));
+
+    const monthlyMap = all.reduce((acc, u) => {
+      const month = new Date(u.createdAt).toISOString().slice(0, 7);
+      acc[month] = (acc[month] || 0) + 1;
+      return acc;
+    }, {});
+    const monthly = Object.entries(monthlyMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, count]) => ({ month, count }));
+
+    res.send({ daily, monthly });
+  } catch (err) {
+    console.error("Failed to compute stats:", err);
+    res.status(500).send({ message: "Server error computing stats" });
+  }
 });
 
 export default router;
