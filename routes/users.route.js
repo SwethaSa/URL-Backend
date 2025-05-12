@@ -38,6 +38,23 @@ async function generateHashedPassword(password) {
   return hashedPassword;
 }
 
+router.get("/stats", auth, async (req, res) => {
+  try {
+    const db = client.db("urlShortener");
+
+    const totalUrls = await db.collection("urls").countDocuments();
+    const totalUsers = await db.collection("users").countDocuments(); // Optional
+
+    res.json({
+      totalUrls,
+      totalUsers,
+      message: "Stats fetched successfully",
+    });
+  } catch (err) {
+    console.error("Error fetching stats:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 //GET USER DATA
 router.get("/", async function (req, res) {
   const dbData = await getAllUsers();
@@ -206,24 +223,6 @@ router.post("/reset-password/:token", async (req, res) => {
   await deleteResetToken(token);
 
   res.send({ message: "Password has been reset successfully." });
-});
-
-router.get("/stats", auth, async (req, res) => {
-  try {
-    const userId = req.user._id; // from auth middleware
-    const urls = await client
-      .db()
-      .collection("urls")
-      .find({ userId })
-      .toArray();
-
-    const totalUrls = urls.length;
-    const totalClicks = urls.reduce((sum, url) => sum + (url.clicks || 0), 0);
-
-    res.json({ totalUrls, totalClicks });
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching stats" });
-  }
 });
 
 export default router;
