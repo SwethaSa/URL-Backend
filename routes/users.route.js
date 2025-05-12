@@ -40,19 +40,21 @@ async function generateHashedPassword(password) {
 
 router.get("/stats", auth, async (req, res) => {
   try {
-    const db = client.db("urlShortener");
+    const userId = req.user.id;
 
-    const totalUrls = await db.collection("urls").countDocuments();
-    const totalUsers = await db.collection("users").countDocuments(); // Optional
+    const db = client.db("yourDatabaseName"); // Replace with your DB name
+    const urlsCollection = db.collection("urls");
+
+    const totalUrls = await urlsCollection.countDocuments({ userId });
+
+    const urls = await urlsCollection.find({ userId }).toArray();
 
     res.json({
       totalUrls,
-      totalUsers,
-      message: "Stats fetched successfully",
+      recent: urls.slice(-5), // latest 5 URLs
     });
   } catch (err) {
-    console.error("Error fetching stats:", err);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Server Error", error: err.message });
   }
 });
 //GET USER DATA
