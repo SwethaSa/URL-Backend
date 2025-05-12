@@ -208,33 +208,21 @@ router.post("/reset-password/:token", async (req, res) => {
   res.send({ message: "Password has been reset successfully." });
 });
 
-router.get("/stats", async (req, res) => {
+router.get("/stats", auth, async (req, res) => {
   try {
-    const col = client.db("urlshortener").collection("urls");
-    const all = await col.find().toArray();
+    const userId = req.user._id; // from auth middleware
+    const urls = await client
+      .db()
+      .collection("urls")
+      .find({ userId })
+      .toArray();
 
-    const dailyMap = all.reduce((acc, u) => {
-      const day = new Date(u.createdAt).toISOString().slice(0, 10);
-      acc[day] = (acc[day] || 0) + 1;
-      return acc;
-    }, {});
-    const daily = Object.entries(dailyMap)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date, count }));
+    const totalUrls = urls.length;
+    const totalClicks = urls.reduce((sum, url) => sum + (url.clicks || 0), 0);
 
-    const monthlyMap = all.reduce((acc, u) => {
-      const month = new Date(u.createdAt).toISOString().slice(0, 7);
-      acc[month] = (acc[month] || 0) + 1;
-      return acc;
-    }, {});
-    const monthly = Object.entries(monthlyMap)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, count]) => ({ month, count }));
-
-    res.send({ daily, monthly });
+    res.json({ totalUrls, totalClicks });
   } catch (err) {
-    console.error("Failed to compute stats:", err);
-    res.status(500).send({ message: "Server error computing stats" });
+    res.status(500).json({ message: "Error fetching stats" });
   }
 });
 
